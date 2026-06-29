@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイミング合わせゲーム</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f0f0f0; font-family: sans-serif; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
+        #game-area { width: 90%; max-width: 500px; height: 100px; background: white; border: 2px solid #333; position: relative; overflow: hidden; border-radius: 8px; margin-bottom: 20px; }
+        .zone { height: 100%; position: absolute; }
+        #zone-blue-left { background-color: rgba(0, 0, 255, 0.3); }
+        #zone-red { background-color: rgba(255, 0, 0, 0.5); }
+        #zone-blue-right { background-color: rgba(0, 0, 255, 0.3); }
+        #slider { width: 10px; height: 100%; background-color: black; position: absolute; left: 0; }
+        .score-big { font-size: 48px; font-weight: bold; margin: 10px 0; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="title-screen" class="screen" style="display: flex;">
+        <h1>タイミング合わせゲーム</h1>
+        <button onclick="showSelect()">ゲームスタート</button>
+    </div>
+
+    <div id="select-screen" class="screen">
+        <h2>ステージ選択</h2>
+        <button onclick="startGame(1)">ステージ 1</button>
+        <button onclick="startGame(2)">ステージ 2</button>
+        <button onclick="startGame(3)">ステージ 3</button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <h3>ステージ: <span id="stage-num">1</span></h3>
+        <div id="game-area">
+            <div id="zone-blue-left" class="zone"></div>
+            <div id="zone-red" class="zone"></div>
+            <div id="zone-blue-right" class="zone"></div>
+            <div id="slider"></div>
+        </div>
+        <div>スコア</div>
+        <div id="score" class="score-big">0</div>
+        <button onclick="checkHit()">クリック！</button>
+    </div>
+
+    <div id="result-screen" class="screen">
+        <h1>結果</h1>
+        <p>最終スコア</p>
+        <div id="final-score" class="score-big">0</div>
+        <button onclick="showTitle()">タイトルへ戻る</button>
+    </div>
+
+    <script>
+        const slider = document.getElementById('slider');
+        const scoreDisplay = document.getElementById('score');
+        const stageDisplay = document.getElementById('stage-num');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const bLeft = document.getElementById('zone-blue-left');
+        const red = document.getElementById('zone-red');
+        const bRight = document.getElementById('zone-blue-right');
+        
+        let position = 0, direction = 1, speed = 6, score = 0, currentStage = 1, isRunning = false, animationId;
+        let redWidth = 12, blueWidth = 18;
+
+        function updateTargetPositions() {
+            const center = 10 + Math.random() * 60;
+            red.style.left = center + "%";
+            red.style.width = redWidth + "%";
+            bLeft.style.left = (center - blueWidth) + "%";
+            bLeft.style.width = blueWidth + "%";
+            bRight.style.left = (center + redWidth) + "%";
+            bRight.style.width = blueWidth + "%";
+        }
+
+        function moveSlider() {
+            if (!isRunning) return;
+            const areaWidth = document.getElementById('game-area').clientWidth;
+            position += speed * direction;
+            if (position > areaWidth - 10 || position < 0) direction *= -1;
+            slider.style.left = position + 'px';
+            animationId = requestAnimationFrame(moveSlider);
+        }
+
+        function showSelect() {
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('select-screen').style.display = 'flex';
+        }
+
+        function startGame(stage) {
+            currentStage = stage;
+            speed = 4 + (stage * 2);
+            redWidth = 14 - (stage * 2);
+            blueWidth = 20 - (stage * 2);
+            
+            document.getElementById('select-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            score = 0; isRunning = true;
+            scoreDisplay.innerText = score;
+            stageDisplay.innerText = stage;
+            updateTargetPositions();
+            moveSlider();
+        }
+
+        function checkHit() {
+            const sliderLeft = slider.offsetLeft;
+            const isRed = (sliderLeft >= red.offsetLeft && sliderLeft <= (red.offsetLeft + red.offsetWidth));
+            const isBlue = (sliderLeft >= bLeft.offsetLeft && sliderLeft <= (bLeft.offsetLeft + bLeft.offsetWidth)) ||
+                           (sliderLeft >= bRight.offsetLeft && sliderLeft <= (bRight.offsetLeft + bRight.offsetWidth));
+
+            if (isRed || isBlue) {
+                score += isRed ? 30 : 10;
+                // スコアが上がるごとに少しずつスピードを上げる
+                speed += 0.3;
+                updateTargetPositions();
+            } else {
+                isRunning = false;
+                cancelAnimationFrame(animationId);
+                document.getElementById('game-screen').style.display = 'none';
+                document.getElementById('result-screen').style.display = 'flex';
+                finalScoreDisplay.innerText = score;
+            }
+            scoreDisplay.innerText = score;
+        }
+
+        function showTitle() {
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('title-screen').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
