@@ -4,51 +4,304 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>タイミング合わせゲーム</title>
+    <!-- Google Fonts からポップで丸みのある日本語フォントを読み込みます -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Yusei+Magic&display=swap" rel="stylesheet">
+    
     <style>
-        body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f0f0f0; font-family: sans-serif; }
-        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; }
-        #game-area { width: 90%; max-width: 500px; height: 100px; background: white; border: 2px solid #333; position: relative; overflow: hidden; border-radius: 8px; margin-bottom: 20px; }
-        .zone { height: 100%; position: absolute; }
-        #zone-blue-left { background-color: rgba(0, 0, 255, 0.3); }
-        #zone-red { background-color: rgba(255, 0, 0, 0.5); }
-        #zone-blue-right { background-color: rgba(0, 0, 255, 0.3); }
-        #slider { width: 10px; height: 100%; background-color: black; position: absolute; left: 0; }
-        .score-big { font-size: 48px; font-weight: bold; margin: 10px 0; }
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px; }
+        :root {
+            --bg-color: #fff4f2;      /* やさしい薄ピンクの背景 */
+            --primary-color: #ff8fa3; /* メインのかわいいピンク */
+            --secondary-color: #ffd0d6; /* 薄いピンク */
+            --accent-yellow: #fff3b0; /* アクセントのイエロー */
+            --accent-blue: #a0c4ff;   /* アクセントのブルー */
+            --text-dark: #5c4d4d;     /* ブラウン系の文字色（黒より柔らかい印象になります） */
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(#ffccd5 15%, transparent 15%),
+                radial-gradient(#ffccd5 15%, transparent 15%);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            font-family: 'Mochiy Pop One', 'sans-serif';
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+
+        /* ゲーム盤の外枠コンテナ */
+        .game-container {
+            background: white;
+            border: 6px solid var(--primary-color);
+            border-radius: 30px;
+            padding: 30px;
+            width: 90%;
+            max-width: 480px;
+            box-shadow: 0 12px 0px var(--secondary-color), 0 20px 30px rgba(0,0,0,0.08);
+            text-align: center;
+            position: relative;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 10px 0 25px 0;
+            color: var(--primary-color);
+            text-shadow: 2px 2px 0px white, 4px 4px 0px var(--secondary-color);
+            line-height: 1.4;
+        }
+
+        h2, h3 {
+            font-size: 20px;
+            margin: 10px 0 20px 0;
+            color: var(--text-dark);
+        }
+
+        /* ゲームエリア（スライダーが動く場所） */
+        #game-area {
+            width: 100%;
+            height: 80px;
+            background: #fffdf9;
+            border: 4px solid var(--text-dark);
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        /* 判定ゾーンのスタイル */
+        .zone {
+            height: 100%;
+            position: absolute;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        #zone-blue-left {
+            background-color: #b3ecff;
+            border-left: 2px dashed #00b3ff;
+            border-right: 2px dashed #00b3ff;
+            opacity: 0.8;
+        }
+        #zone-red {
+            background-color: #ffb3c6;
+            border-left: 3px solid #ff4d6d;
+            border-right: 3px solid #ff4d6d;
+            opacity: 0.9;
+            z-index: 2;
+        }
+        #zone-blue-right {
+            background-color: #b3ecff;
+            border-left: 2px dashed #00b3ff;
+            border-right: 2px dashed #00b3ff;
+            opacity: 0.8;
+        }
+
+        /* スライダー（針）をかわいい星型のデザインに */
+        #slider {
+            width: 24px;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateX(-50%); /* 中心に合わせる */
+        }
+
+        /* 星の見た目をCSSで表現 */
+        #slider::before {
+            content: '⭐';
+            font-size: 24px;
+            filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.2));
+            animation: pulse 0.5s infinite alternate ease-in-out;
+        }
+
+        /* スライダーの中央ラインを示す目印 */
+        #slider::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            background-color: var(--text-dark);
+            opacity: 0.5;
+            top: 0;
+            z-index: -1;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.15); }
+        }
+
+        /* スコアまわりのデザイン */
+        .score-label {
+            font-size: 14px;
+            color: #a89a9a;
+            margin-bottom: 2px;
+            letter-spacing: 2px;
+        }
+
+        .score-big {
+            font-size: 54px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 5px 0 20px 0;
+            text-shadow: 3px 3px 0px var(--secondary-color);
+            font-family: 'Yusei Magic', sans-serif;
+        }
+
+        /* かわいくてぷにぷにしたボタン */
+        button {
+            background-color: white;
+            border: 4px solid var(--text-dark);
+            color: var(--text-dark);
+            padding: 12px 28px;
+            font-size: 18px;
+            font-family: 'Mochiy Pop One', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 20px;
+            box-shadow: 0 6px 0px var(--text-dark);
+            transition: all 0.1s ease;
+            margin: 10px;
+            outline: none;
+            position: relative;
+        }
+
+        button:hover {
+            background-color: var(--accent-yellow);
+            transform: translateY(2px);
+            box-shadow: 0 4px 0px var(--text-dark);
+        }
+
+        button:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0px var(--text-dark);
+        }
+
+        /* ステージ選択の個別ボタンスタイル */
+        .btn-stage {
+            width: 100%;
+            max-width: 240px;
+            margin: 8px 0;
+        }
+        .btn-stage:nth-of-type(1) { background-color: #e8f0fe; }
+        .btn-stage:nth-of-type(2) { background-color: #e6fffa; }
+        .btn-stage:nth-of-type(3) { background-color: #fdf2e9; }
+        
+        .btn-stage:hover {
+            filter: brightness(0.95);
+        }
+
+        /* タイトル画面を飾るデコレーションイラスト風 */
+        .deco-icon {
+            font-size: 48px;
+            margin: 10px;
+            display: inline-block;
+            animation: bounce 2s infinite ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(5deg); }
+        }
+
+        /* ゲーム画面での「クリック！」ボタンを一番大きく目立たせる */
+        .btn-hit {
+            background-color: #ffccd5;
+            font-size: 24px;
+            padding: 16px 50px;
+            border-color: var(--text-dark);
+            width: 100%;
+            max-width: 300px;
+        }
+        .btn-hit:hover {
+            background-color: #ffb3c6;
+        }
+
+        /* 結果画面のスコア強調 */
+        .result-crown {
+            font-size: 50px;
+            margin-bottom: 5px;
+            animation: rotateCrown 1.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes rotateCrown {
+            0% { transform: rotate(-10deg); }
+            100% { transform: rotate(10deg); }
+        }
     </style>
 </head>
 <body>
 
-    <div id="title-screen" class="screen" style="display: flex;">
-        <h1>タイミング合わせゲーム</h1>
-        <button onclick="showSelect()">ゲームスタート</button>
-    </div>
-
-    <div id="select-screen" class="screen">
-        <h2>ステージ選択</h2>
-        <button onclick="startGame(1)">ステージ 1</button>
-        <button onclick="startGame(2)">ステージ 2</button>
-        <button onclick="startGame(3)">ステージ 3</button>
-    </div>
-
-    <div id="game-screen" class="screen">
-        <h3>ステージ: <span id="stage-num">1</span></h3>
-        <div id="game-area">
-            <div id="zone-blue-left" class="zone"></div>
-            <div id="zone-red" class="zone"></div>
-            <div id="zone-blue-right" class="zone"></div>
-            <div id="slider"></div>
+    <div class="game-container">
+        <!-- タイトル画面 -->
+        <div id="title-screen" class="screen" style="display: flex;">
+            <div class="deco-icon">🎯</div>
+            <h1>タイミング<br>あわせゲーム</h1>
+            <button onclick="showSelect()">ゲームスタート</button>
         </div>
-        <div>スコア</div>
-        <div id="score" class="score-big">0</div>
-        <button onclick="checkHit()">クリック！</button>
-    </div>
 
-    <div id="result-screen" class="screen">
-        <h1>結果</h1>
-        <p>最終スコア</p>
-        <div id="final-score" class="score-big">0</div>
-        <button onclick="showTitle()">タイトルへ戻る</button>
+        <!-- ステージ選択画面 -->
+        <div id="select-screen" class="screen">
+            <h2>ステージをえらんでね</h2>
+            <button class="btn-stage" onclick="startGame(1)">🍭 ステージ 1</button>
+            <button class="btn-stage" onclick="startGame(2)">🍰 ステージ 2</button>
+            <button class="btn-stage" onclick="startGame(3)">🍒 ステージ 3</button>
+            <button onclick="showTitle()" style="font-size: 14px; padding: 6px 15px; margin-top: 20px;">もどる</button>
+        </div>
+
+        <!-- ゲームプレイ画面 -->
+        <div id="game-screen" class="screen">
+            <h3>ステージ: <span id="stage-num" style="color: var(--primary-color);">1</span></h3>
+            <div id="game-area">
+                <div id="zone-blue-left" class="zone"></div>
+                <div id="zone-red" class="zone"></div>
+                <div id="zone-blue-right" class="zone"></div>
+                <div id="slider"></div>
+            </div>
+            <div class="score-label">SCORE</div>
+            <div id="score" class="score-big">0</div>
+            <button class="btn-hit" onclick="checkHit()">タイミングよくタッチ！</button>
+        </div>
+
+        <!-- 結果画面 -->
+        <div id="result-screen" class="screen">
+            <div class="result-crown">👑</div>
+            <h1>おしまい！</h1>
+            <p style="margin: 0; color: #a89a9a;">あなたのスコア</p>
+            <div id="final-score" class="score-big">0</div>
+            <button onclick="showTitle()">タイトルへもどる</button>
+        </div>
     </div>
 
     <script>
@@ -64,7 +317,8 @@
         let redWidth = 12, blueWidth = 18;
 
         function updateTargetPositions() {
-            const center = 10 + Math.random() * 60;
+            // スライダーの中心位置を元に判定できるようにターゲットを調整
+            const center = 15 + Math.random() * 50; // 端に行き過ぎないように少し調整
             red.style.left = center + "%";
             red.style.width = redWidth + "%";
             bLeft.style.left = (center - blueWidth) + "%";
@@ -77,7 +331,11 @@
             if (!isRunning) return;
             const areaWidth = document.getElementById('game-area').clientWidth;
             position += speed * direction;
-            if (position > areaWidth - 10 || position < 0) direction *= -1;
+            
+            // スライダーが端に到達した時の跳ね返り
+            if (position > areaWidth || position < 0) {
+                direction *= -1;
+            }
             slider.style.left = position + 'px';
             animationId = requestAnimationFrame(moveSlider);
         }
@@ -92,10 +350,13 @@
             speed = 4 + (stage * 2);
             redWidth = 14 - (stage * 2);
             blueWidth = 20 - (stage * 2);
+            position = 0;
+            direction = 1;
             
             document.getElementById('select-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
-            score = 0; isRunning = true;
+            score = 0; 
+            isRunning = true;
             scoreDisplay.innerText = score;
             stageDisplay.innerText = stage;
             updateTargetPositions();
@@ -103,15 +364,27 @@
         }
 
         function checkHit() {
-            const sliderLeft = slider.offsetLeft;
-            const isRed = (sliderLeft >= red.offsetLeft && sliderLeft <= (red.offsetLeft + red.offsetWidth));
-            const isBlue = (sliderLeft >= bLeft.offsetLeft && sliderLeft <= (bLeft.offsetLeft + bLeft.offsetWidth)) ||
-                           (sliderLeft >= bRight.offsetLeft && sliderLeft <= (bRight.offsetLeft + bRight.offsetWidth));
+            if (!isRunning) return;
+
+            const areaWidth = document.getElementById('game-area').clientWidth;
+            // sliderLeft をパーセンテージ換算して比較します
+            const sliderPercent = (position / areaWidth) * 100;
+
+            const rLeft = parseFloat(red.style.left);
+            const rWidth = parseFloat(red.style.width);
+            const blLeft = parseFloat(bLeft.style.left);
+            const blWidth = parseFloat(bLeft.style.width);
+            const brLeft = parseFloat(bRight.style.left);
+            const brWidth = parseFloat(bRight.style.width);
+
+            const isRed = (sliderPercent >= rLeft && sliderPercent <= (rLeft + rWidth));
+            const isBlue = (sliderPercent >= blLeft && sliderPercent <= (blLeft + blWidth)) ||
+                           (sliderPercent >= brLeft && sliderPercent <= (brLeft + brWidth));
 
             if (isRed || isBlue) {
                 score += isRed ? 30 : 10;
                 // スコアが上がるごとに少しずつスピードを上げる
-                speed += 0.3;
+                speed += 0.4;
                 updateTargetPositions();
             } else {
                 isRunning = false;
@@ -124,6 +397,7 @@
         }
 
         function showTitle() {
+            document.getElementById('select-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'none';
             document.getElementById('title-screen').style.display = 'flex';
         }
