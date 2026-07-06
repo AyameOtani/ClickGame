@@ -259,6 +259,104 @@
             0% { transform: rotate(-10deg); }
             100% { transform: rotate(10deg); }
         }
+
+        /* ランキング画面 */
+        .ranking-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            gap: 8px;
+            width: 100%;
+        }
+        .tab-btn {
+            background-color: white;
+            border: 3px solid var(--text-dark);
+            padding: 8px 12px;
+            font-size: 14px;
+            font-family: 'Mochiy Pop One', sans-serif;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 var(--text-dark);
+            margin: 0;
+            flex: 1;
+            transition: all 0.1s ease;
+        }
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--text-dark);
+        }
+        .tab-btn:hover {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 var(--text-dark);
+        }
+        .tab-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 var(--text-dark);
+        }
+        .ranking-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 15px 0;
+            background: #fffdf9;
+            border: 3px solid var(--text-dark);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .ranking-table th, .ranking-table td {
+            padding: 10px;
+            border-bottom: 3px solid var(--secondary-color);
+            font-size: 14px;
+        }
+        .ranking-table th {
+            background-color: var(--secondary-color);
+            color: var(--text-dark);
+            font-weight: bold;
+        }
+        .ranking-table tr:last-child td {
+            border-bottom: none;
+        }
+        .rank-badge {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            border-radius: 50%;
+            font-weight: bold;
+        }
+        .rank-1 { background-color: #ffd700; color: white; text-shadow: 1px 1px 0 var(--text-dark); }
+        .rank-2 { background-color: #c0c0c0; color: white; text-shadow: 1px 1px 0 var(--text-dark); }
+        .rank-3 { background-color: #cd7f32; color: white; text-shadow: 1px 1px 0 var(--text-dark); }
+
+        /* 名前入力フォーム */
+        .name-input-container {
+            margin: 15px 0;
+            padding: 15px;
+            background: #fffdf9;
+            border: 3px dashed var(--primary-color);
+            border-radius: 15px;
+            display: none;
+        }
+        .name-input-container p {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: var(--text-dark);
+        }
+        .name-input {
+            border: 3px solid var(--text-dark);
+            padding: 8px 12px;
+            font-size: 16px;
+            border-radius: 12px;
+            text-align: center;
+            font-family: 'Mochiy Pop One', sans-serif;
+            width: 80%;
+            max-width: 200px;
+            outline: none;
+        }
+        .name-input:focus {
+            border-color: var(--primary-color);
+        }
     </style>
 </head>
 <body>
@@ -269,6 +367,7 @@
             <div class="deco-icon">🎯</div>
             <h1>タイミング<br>あわせゲーム</h1>
             <button onclick="showSelect()">ゲームスタート</button>
+            <button onclick="showRanking(1)" style="background-color: var(--accent-blue);">ランキング</button>
         </div>
 
         <!-- ステージ選択画面 -->
@@ -300,7 +399,39 @@
             <h1>おしまい！</h1>
             <p style="margin: 0; color: #a89a9a;">あなたのスコア</p>
             <div id="final-score" class="score-big">0</div>
-            <button onclick="showTitle()">タイトルへもどる</button>
+            
+            <!-- ランクイン時の名前入力フォーム -->
+            <div id="name-input-container" class="name-input-container">
+                <p>🎉 ランクインしました！ 🎉</p>
+                <p>なまえを入力してね（最大8文字）</p>
+                <input type="text" id="player-name" class="name-input" maxlength="8" placeholder="プレイヤー"><br>
+                <button onclick="registerScore()" style="margin-top: 15px; background-color: var(--accent-yellow);">登録する</button>
+            </div>
+
+            <button id="result-back-btn" onclick="showTitle()">タイトルへもどる</button>
+        </div>
+
+        <!-- ランキング画面 -->
+        <div id="ranking-screen" class="screen">
+            <h2>🏆 ランキング 🏆</h2>
+            <div class="ranking-tabs">
+                <button id="tab-stage-1" class="tab-btn active" onclick="changeRankingTab(1)">🍭 ステージ 1</button>
+                <button id="tab-stage-2" class="tab-btn" onclick="changeRankingTab(2)">🍰 ステージ 2</button>
+                <button id="tab-stage-3" class="tab-btn" onclick="changeRankingTab(3)">🍒 ステージ 3</button>
+            </div>
+            <table class="ranking-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">じゅんい</th>
+                        <th style="width: 45%;">なまえ</th>
+                        <th style="width: 30%;">スコア</th>
+                    </tr>
+                </thead>
+                <tbody id="ranking-tbody">
+                    <!-- JavaScriptで動的に生成 -->
+                </tbody>
+            </table>
+            <button onclick="showTitle()" style="font-size: 14px; padding: 6px 15px; margin-top: 10px;">もどる</button>
         </div>
     </div>
 
@@ -392,6 +523,16 @@
                 document.getElementById('game-screen').style.display = 'none';
                 document.getElementById('result-screen').style.display = 'flex';
                 finalScoreDisplay.innerText = score;
+
+                // ランキング判定
+                if (checkRankIn(currentStage, score)) {
+                    document.getElementById('name-input-container').style.display = 'block';
+                    document.getElementById('result-back-btn').style.display = 'none';
+                    document.getElementById('player-name').value = '';
+                } else {
+                    document.getElementById('name-input-container').style.display = 'none';
+                    document.getElementById('result-back-btn').style.display = 'inline-block';
+                }
             }
             scoreDisplay.innerText = score;
         }
@@ -399,7 +540,98 @@
         function showTitle() {
             document.getElementById('select-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('ranking-screen').style.display = 'none';
             document.getElementById('title-screen').style.display = 'flex';
+        }
+
+        // ランキング機能用のJavaScriptロジック
+        function getRankings(stage) {
+            const key = 'click_game_ranking_v2_stage_' + stage;
+            const data = localStorage.getItem(key);
+            if (data) {
+                return JSON.parse(data);
+            }
+            return [];
+        }
+
+        function saveRankings(stage, rankings) {
+            const key = 'click_game_ranking_v2_stage_' + stage;
+            localStorage.setItem(key, JSON.stringify(rankings));
+        }
+
+        function checkRankIn(stage, score) {
+            if (score <= 0) return false; // 0点はランクイン対象外
+            const rankings = getRankings(stage);
+            if (rankings.length < 5) return true;
+            return score > rankings[rankings.length - 1].score;
+        }
+
+        function registerScore() {
+            let name = document.getElementById('player-name').value.trim();
+            if (!name) {
+                name = "プレイヤー";
+            }
+            const rankings = getRankings(currentStage);
+            rankings.push({ name: name, score: score });
+            // スコア降順ソート
+            rankings.sort((a, b) => b.score - a.score);
+            // 上位5件のみ残す
+            const newRankings = rankings.slice(0, 5);
+            saveRankings(currentStage, newRankings);
+
+            // 登録後はランキング画面へ遷移
+            document.getElementById('result-screen').style.display = 'none';
+            showRanking(currentStage);
+        }
+
+        function showRanking(stage) {
+            // 他の全画面を非表示にする
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(s => s.style.display = 'none');
+            
+            document.getElementById('ranking-screen').style.display = 'flex';
+            changeRankingTab(stage);
+        }
+
+        function changeRankingTab(stage) {
+            // アクティブなタブクラスの更新
+            for (let i = 1; i <= 3; i++) {
+                const tab = document.getElementById('tab-stage-' + i);
+                if (i === stage) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            }
+
+            // ランキングデータの表示
+            const rankings = getRankings(stage);
+            const tbody = document.getElementById('ranking-tbody');
+            tbody.innerHTML = '';
+
+            for (let i = 0; i < 5; i++) {
+                const entry = rankings[i] || { name: "---", score: "---" };
+                const tr = document.createElement('tr');
+                
+                const tdRank = document.createElement('td');
+                const rankNum = i + 1;
+                if (rankNum <= 3) {
+                    tdRank.innerHTML = `<span class="rank-badge rank-${rankNum}">${rankNum}</span>`;
+                } else {
+                    tdRank.innerText = rankNum;
+                }
+
+                const tdName = document.createElement('td');
+                tdName.innerText = entry.name;
+
+                const tdScore = document.createElement('td');
+                tdScore.innerText = entry.score;
+
+                tr.appendChild(tdRank);
+                tr.appendChild(tdName);
+                tr.appendChild(tdScore);
+                tbody.appendChild(tr);
+            }
         }
     </script>
 </body>
