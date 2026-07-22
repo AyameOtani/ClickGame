@@ -524,15 +524,17 @@
                 document.getElementById('result-screen').style.display = 'flex';
                 finalScoreDisplay.innerText = score;
 
-                // ランキング判定
-                if (checkRankIn(currentStage, score)) {
-                    document.getElementById('name-input-container').style.display = 'block';
-                    document.getElementById('result-back-btn').style.display = 'none';
-                    document.getElementById('player-name').value = '';
-                } else {
-                    document.getElementById('name-input-container').style.display = 'none';
-                    document.getElementById('result-back-btn').style.display = 'inline-block';
-                }
+                // サーバー通信で非同期にランキング判定を行う
+                checkRankInAsync(currentStage, score).then(isRankIn => {
+                    if (isRankIn) {
+                        document.getElementById('name-input-container').style.display = 'block';
+                        document.getElementById('result-back-btn').style.display = 'none';
+                        document.getElementById('player-name').value = '';
+                    } else {
+                        document.getElementById('name-input-container').style.display = 'none';
+                        document.getElementById('result-back-btn').style.display = 'inline-block';
+                    }
+                });
             }
             scoreDisplay.innerText = score;
         }
@@ -544,56 +546,69 @@
             document.getElementById('title-screen').style.display = 'flex';
         }
 
-        // ランキング機能用のJavaScriptロジック
-        function getRankings(stage) {
-            const key = 'click_game_ranking_v2_stage_' + stage;
-            const data = localStorage.getItem(key);
-            if (data) {
-                return JSON.parse(data);
+        // ランキング機能用のJavaScriptロジック（PHP連携版に変更）
+        // サーバーからランキングを取得する (非同期)
+        async function getRankings(stage) {
+            try {
+                // ranking.php にGETリクエストを送信
+                const response = await fetch('ranking.php?stage=' + stage);
+                if (response.ok) {
+                    return await response.json();
+                }
+            } catch (error) {
+                console.error("ランキング取得エラー", error);
             }
             return [];
         }
 
-        function saveRankings(stage, rankings) {
-            const key = 'click_game_ranking_v2_stage_' + stage;
-            localStorage.setItem(key, JSON.stringify(rankings));
-        }
-
-        function checkRankIn(stage, score) {
+        // 非同期でランクイン判定を行う関数
+        async function checkRankInAsync(stage, score) {
             if (score <= 0) return false; // 0点はランクイン対象外
-            const rankings = getRankings(stage);
-            if (rankings.length < 5) return true;
+            const rankings = await getRankings(stage);
+            // 10件未満なら無条件でランクイン
+            if (rankings.length < 10) return true;
+            // 10位のスコアより高ければランクイン
             return score > rankings[rankings.length - 1].score;
         }
 
-        function registerScore() {
+        // スコアをサーバーに送信する
+        async function registerScore() {
             let name = document.getElementById('player-name').value.trim();
             if (!name) {
                 name = "プレイヤー";
             }
-            const rankings = getRankings(currentStage);
-            rankings.push({ name: name, score: score });
-            // スコア降順ソート
-            rankings.sort((a, b) => b.score - a.score);
-            // 上位5件のみ残す
-            const newRankings = rankings.slice(0, 5);
-            saveRankings(currentStage, newRankings);
+            
+            // 送信用データ（フォームデータ）を作成
+            const formData = new FormData();
+            formData.append('player_name', name);
+            formData.append('score', score);
+            formData.append('stage', currentStage); // ステージ情報も送る
+
+            try {
+                // save_score.php へPOST送信する
+                await fetch('save_score.php', {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (error) {
+                console.error("スコア送信エラー", error);
+            }
 
             // 登録後はランキング画面へ遷移
             document.getElementById('result-screen').style.display = 'none';
             showRanking(currentStage);
         }
 
-        function showRanking(stage) {
+        async function showRanking(stage) {
             // 他の全画面を非表示にする
             const screens = document.querySelectorAll('.screen');
             screens.forEach(s => s.style.display = 'none');
             
             document.getElementById('ranking-screen').style.display = 'flex';
-            changeRankingTab(stage);
+            await changeRankingTab(stage);
         }
 
-        function changeRankingTab(stage) {
+        async function changeRankingTab(stage) {
             // アクティブなタブクラスの更新
             for (let i = 1; i <= 3; i++) {
                 const tab = document.getElementById('tab-stage-' + i);
@@ -604,13 +619,14 @@
                 }
             }
 
-            // ランキングデータの表示
-            const rankings = getRankings(stage);
+            // サーバーからランキングデータを取得
+            const rankings = await getRankings(stage);
             const tbody = document.getElementById('ranking-tbody');
             tbody.innerHTML = '';
 
-            for (let i = 0; i < 5; i++) {
-                const entry = rankings[i] || { name: "---", score: "---" };
+            // 上位10件を表示するループに変更
+            for (let i = 0; i < 10; i++) {
+                const entry = rankings[i] || { player_name: "---", score: "---" };
                 const tr = document.createElement('tr');
                 
                 const tdRank = document.createElement('td');
@@ -622,7 +638,8 @@
                 }
 
                 const tdName = document.createElement('td');
-                tdName.innerText = entry.name;
+                // DBからは player_name で返ってくる
+                tdName.innerText = entry.player_name || "---";
 
                 const tdScore = document.createElement('td');
                 tdScore.innerText = entry.score;
